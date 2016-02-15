@@ -1,0 +1,15 @@
+{
+	"Token": "<your token here>",
+	"Services": {
+		"Minecraft": {
+			"Port": 25565,
+			"VirtualDroplet": "minecraft"
+		}
+	},
+	"VirtualDroplets": {
+		"minecraft": {
+			"Size": "4gb",
+			"Region": "nyc3"
+		}
+	}
+}
