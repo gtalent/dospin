@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 )
 
-type settings struct {
+type Settings struct {
 	Token           string
 	VirtualDroplets map[string]VirtualDroplet
 }
@@ -15,8 +15,8 @@ type VirtualDroplet struct {
 	Region string
 }
 
-func loadSettings(path string) (settings, error) {
-	var s settings
+func loadSettings(path string) (Settings, error) {
+	var s Settings
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return s, err
