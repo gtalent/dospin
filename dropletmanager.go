@@ -3,7 +3,10 @@ package main
 import (
 	"errors"
 	"github.com/digitalocean/godo"
+	"time"
 )
+
+const DROPLET_NS = "dospin-"
 
 type DropletManager struct {
 	client   *godo.Client
@@ -30,25 +33,36 @@ func (me *DropletManager) SpinupMachine(name string) (string, error) {
 		}
 		vd := me.settings.VirtualDroplets[name]
 		createRequest := &godo.DropletCreateRequest{
-			Name:   name,
-			Region: vd.Region,
-			Size:   vd.Size,
+			Name:              DROPLET_NS + name,
+			Region:            vd.Region,
+			Size:              vd.Size,
+			PrivateNetworking: true,
 			Image: godo.DropletCreateImage{
 				ID: image.ID,
 			},
 		}
 
-		droplet, _, err := me.client.Droplets.Create(createRequest)
+		_, _, err = me.client.Droplets.Create(createRequest)
 		if err != nil {
 			return "", err
 		}
 
-		return droplet.PrivateIPv4()
+		// get the private IP and return it
+		ip := ""
+		for {
+			droplet, err = me.getDroplet(name)
+			ip, err = droplet.PrivateIPv4()
+			if ip != "" || (err != nil && err.Error() != "no networks have been defined") {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		return ip, err
 	}
 }
 
 func (me *DropletManager) getDroplet(name string) (godo.Droplet, error) {
-	name = "dospin:" + name
+	name = DROPLET_NS + name
 	page := 0
 	perPage := 200
 	var droplet godo.Droplet
@@ -74,16 +88,18 @@ func (me *DropletManager) getDroplet(name string) (godo.Droplet, error) {
 			break
 		}
 	}
-	return droplet, errors.New("Could not find droplet")
+	return droplet, errors.New("Could not find droplet: " + name)
 }
 
 func (me *DropletManager) getSnapshot(name string) (godo.Image, error) {
-	name = "dospin:" + name
+	name = DROPLET_NS + name
 	page := 0
 	perPage := 200
 	var image godo.Image
+	var err error
 	for {
 		page++
+
 		// get list of images
 		opt := &godo.ListOptions{
 			Page:    page,
@@ -93,16 +109,19 @@ func (me *DropletManager) getSnapshot(name string) (godo.Image, error) {
 		if err != nil {
 			break
 		}
+
 		// find image
 		for _, a := range images {
 			if a.Name == name {
 				return a, nil
 			}
 		}
+
 		// check next page?
 		if len(images) < perPage {
+			err = errors.New("Could not find image: " + name)
 			break
 		}
 	}
-	return image, errors.New("Could not find image")
+	return image, err
 }

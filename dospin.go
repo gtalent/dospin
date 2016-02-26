@@ -27,11 +27,12 @@ func main() {
 	client := godo.NewClient(oauthClient)
 	dm := NewDropletManager(client, settings)
 
-	_, err = dm.SpinupMachine("minecraft")
+	ip, err := dm.SpinupMachine("minecraft")
 	if err != nil {
-		log.Println(err)
+		log.Println("Error:", err)
 		return
 	}
+	log.Println("IP: " + ip)
 	//_, err = client.Droplets.Delete(droplet.ID)
 	//if err != nil {
 	//	log.Println(err)
