@@ -33,6 +33,11 @@ func main() {
 		return
 	}
 	log.Println("IP: " + ip)
+
+	if err := dm.SpindownMachine("minecraft"); err != nil {
+		log.Println("Error:", err)
+		return
+	}
 	//_, err = client.Droplets.Delete(droplet.ID)
 	//if err != nil {
 	//	log.Println(err)

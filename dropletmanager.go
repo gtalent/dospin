@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/digitalocean/godo"
+	"log"
 	"time"
 )
 
@@ -27,6 +28,7 @@ func (me *DropletManager) SpinupMachine(name string) (string, error) {
 	if droplet, err := me.getDroplet(name); err == nil {
 		return droplet.PrivateIPv4()
 	} else {
+		// create the droplet
 		image, err := me.getSnapshot(name)
 		if err != nil {
 			return "", err
@@ -42,23 +44,75 @@ func (me *DropletManager) SpinupMachine(name string) (string, error) {
 			},
 		}
 
-		_, _, err = me.client.Droplets.Create(createRequest)
+		log.Println("Spinup: Creating " + name)
+		droplet, _, err := me.client.Droplets.Create(createRequest)
+		// wait until machine is ready
+		for {
+			d, _, err := me.client.Droplets.Get(droplet.ID)
+			if err != nil {
+				log.Println(err)
+			} else if d.Status == "active" {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
 		if err != nil {
 			return "", err
 		}
+		log.Println("Spinup: Created " + name)
 
 		// get the private IP and return it
-		ip := ""
+		droplet, _, err = me.client.Droplets.Get(droplet.ID)
+		if err != nil {
+			return "", err
+		}
+		return droplet.PrivateIPv4()
+	}
+}
+
+func (me *DropletManager) SpindownMachine(name string) error {
+	droplet, err := me.getDroplet(name)
+	if err != nil {
+		return err
+	}
+
+	// power off
+	if droplet.Status != "off" {
+		log.Println("Spindown: Powering down " + name)
+		// wait until machine is off
 		for {
 			droplet, err = me.getDroplet(name)
-			ip, err = droplet.PrivateIPv4()
-			if ip != "" || (err != nil && err.Error() != "no networks have been defined") {
+			if err != nil {
+				log.Println(err)
+			} else if droplet.Status == "off" {
 				break
 			}
 			time.Sleep(100 * time.Millisecond)
+			_, _, err = me.client.DropletActions.Shutdown(droplet.ID)
+			if err != nil {
+				log.Println("Power down of ", name, " failed: ", err)
+			}
 		}
-		return ip, err
+		log.Println("Spindown: Powered down " + name)
 	}
+
+	// snapshot existing droplet
+	log.Println("Spindown: Snapshoting " + name)
+	action, _, err := me.client.DropletActions.Snapshot(droplet.ID, DROPLET_NS+name)
+	if err != nil || !me.actionWait(action.ID) {
+		return err
+	}
+	log.Println("Spindown: Snapshoted " + name)
+
+	// delete droplet
+	log.Println("Spindown: Deleting " + name)
+	_, err = me.client.Droplets.Delete(droplet.ID)
+	if err != nil {
+		return err
+	}
+	log.Println("Spindown: Deleted " + name)
+
+	return err
 }
 
 func (me *DropletManager) getDroplet(name string) (godo.Droplet, error) {
@@ -124,4 +178,20 @@ func (me *DropletManager) getSnapshot(name string) (godo.Image, error) {
 		}
 	}
 	return image, err
+}
+
+func (me *DropletManager) actionWait(actionId int) bool {
+	for {
+		a, _, err := me.client.Actions.Get(actionId)
+		if err != nil {
+			log.Println("Action failed: ", err)
+			return false
+		} else if a.Status == "completed" {
+			return true
+		} else if a.Status == "errored" {
+			log.Println("Action failed: ", a.Type, " on ", a.ResourceID)
+			return false
+		}
+		time.Sleep(1000 * time.Millisecond)
+	}
 }
