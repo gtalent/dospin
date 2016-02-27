@@ -3,10 +3,10 @@
 	"Services": {
 		"Minecraft": {
 			"Port": 25565,
-			"VirtualDroplet": "minecraft"
+			"LogicalDroplet": "minecraft"
 		}
 	},
-	"VirtualDroplets": {
+	"LogicalServers": {
 		"minecraft": {
 			"Size": "4gb",
 			"Region": "nyc3"

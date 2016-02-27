@@ -15,7 +15,7 @@ import (
 type Settings struct {
 	ApiToken       string
 	Services       map[string]Service
-	VirtualServers map[string]VirtualServer
+	LogicalServers map[string]LogicalServer
 }
 
 type Service struct {
@@ -23,7 +23,7 @@ type Service struct {
 	LogicalServer string
 }
 
-type VirtualServer struct {
+type LogicalServer struct {
 	Size   string
 	Region string
 }

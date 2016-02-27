@@ -47,12 +47,17 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
  Serves channel requests.
 */
 func (me *ServerManager) Serve() {
+	// TODO: see if server is currently up, and setup port forwarding if so
+
+	// event loop
 	for running := true; running; {
 		select {
 		case action := <-me.in:
 			running = me.serveAction(action)
 		}
 	}
+
+	// notify done
 	me.done <- 42
 }
 
