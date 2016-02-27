@@ -33,14 +33,14 @@ func main() {
 
 	dh := NewDropletHandler(settings)
 
-	ip, err := dh.SpinupMachine("minecraft")
+	ip, err := dh.Spinup("minecraft")
 	if err != nil {
 		log.Println("Error:", err)
 		return
 	}
 	log.Println("IP: " + ip)
 
-	if err := dh.SpindownMachine("minecraft"); err != nil {
+	if err := dh.Spindown("minecraft"); err != nil {
 		log.Println("Error:", err)
 		return
 	}

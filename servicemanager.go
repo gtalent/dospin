@@ -15,8 +15,8 @@ import (
 
 type ServerHandler interface {
 	// Takes snapshot name, and returns the IP to connect to.
-	SpinupMachine(name string) (string, error)
-	SpindownMachine(name string) error
+	Spinup(name string) (string, error)
+	Spindown(name string) error
 }
 
 type service struct {
@@ -64,7 +64,7 @@ func (me *ServiceManager) setupService(serviceName, machineName string, port int
 					// connection accepted
 
 					// spinup machine
-					ip, err := me.machineManager.SpinupMachine(machineName)
+					ip, err := me.machineManager.Spinup(machineName)
 
 					// setup port forwarding
 					if err == nil {

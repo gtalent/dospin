@@ -48,7 +48,7 @@ func NewDropletHandler(settings Settings) *DropletHandler {
 /*
   Gets the Droplet if it already exists, instantiates it if it does not.
 */
-func (me *DropletHandler) SpinupMachine(name string) (string, error) {
+func (me *DropletHandler) Spinup(name string) (string, error) {
 	if droplet, err := me.getDroplet(name); err == nil {
 		return droplet.PrivateIPv4()
 	} else {
@@ -57,7 +57,7 @@ func (me *DropletHandler) SpinupMachine(name string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		vd := me.settings.VirtualDroplets[name]
+		vd := me.settings.VirtualServers[name]
 		createRequest := &godo.DropletCreateRequest{
 			Name:              DROPLET_NS + name,
 			Region:            vd.Region,
@@ -106,7 +106,7 @@ func (me *DropletHandler) SpinupMachine(name string) (string, error) {
 	}
 }
 
-func (me *DropletHandler) SpindownMachine(name string) error {
+func (me *DropletHandler) Spindown(name string) error {
 	droplet, err := me.getDroplet(name)
 	if err != nil {
 		return err

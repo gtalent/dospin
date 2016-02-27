@@ -13,11 +13,17 @@ import (
 )
 
 type Settings struct {
-	ApiToken        string
-	VirtualDroplets map[string]VirtualDroplet
+	ApiToken       string
+	Services       map[string]Service
+	VirtualServers map[string]VirtualServer
 }
 
-type VirtualDroplet struct {
+type Service struct {
+	Port          int
+	LogicalServer string
+}
+
+type VirtualServer struct {
 	Size   string
 	Region string
 }
