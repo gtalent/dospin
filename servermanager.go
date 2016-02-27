@@ -79,14 +79,16 @@ func (me *ServerManager) serveAction(action int) bool {
 	switch action {
 	case SERVERMANAGER_SPINUP:
 		ip, err := me.server.Spinup(me.name)
-		me.addPortForwards(ip)
-		if err != nil {
+		if err == nil {
+			me.addPortForwards(ip)
+		} else {
 			log.Println("ServerManager: Could not spin up "+me.name+":", err)
 		}
 	case SERVERMANAGER_SPINDOWN:
 		err := me.server.Spindown(me.name)
-		me.rmPortForwards()
-		if err != nil {
+		if err == nil {
+			me.rmPortForwards()
+		} else {
 			log.Println("ServerManager: Could not spin down "+me.name+":", err)
 		}
 	case SERVERMANAGER_STOP:
