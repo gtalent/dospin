@@ -28,13 +28,13 @@ func (t *tokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-type DropletManager struct {
+type DropletHandler struct {
 	client   *godo.Client
 	settings Settings
 }
 
-func NewDropletManager(settings Settings) *DropletManager {
-	retval := new(DropletManager)
+func NewDropletHandler(settings Settings) *DropletHandler {
+	retval := new(DropletHandler)
 	retval.settings = settings
 
 	// setup DO client
@@ -48,7 +48,7 @@ func NewDropletManager(settings Settings) *DropletManager {
 /*
   Gets the Droplet if it already exists, instantiates it if it does not.
 */
-func (me *DropletManager) SpinupMachine(name string) (string, error) {
+func (me *DropletHandler) SpinupMachine(name string) (string, error) {
 	if droplet, err := me.getDroplet(name); err == nil {
 		return droplet.PrivateIPv4()
 	} else {
@@ -106,7 +106,7 @@ func (me *DropletManager) SpinupMachine(name string) (string, error) {
 	}
 }
 
-func (me *DropletManager) SpindownMachine(name string) error {
+func (me *DropletHandler) SpindownMachine(name string) error {
 	droplet, err := me.getDroplet(name)
 	if err != nil {
 		return err
@@ -151,7 +151,7 @@ func (me *DropletManager) SpindownMachine(name string) error {
 	return err
 }
 
-func (me *DropletManager) getDroplet(name string) (godo.Droplet, error) {
+func (me *DropletHandler) getDroplet(name string) (godo.Droplet, error) {
 	name = DROPLET_NS + name
 	page := 0
 	perPage := 200
@@ -181,7 +181,7 @@ func (me *DropletManager) getDroplet(name string) (godo.Droplet, error) {
 	return droplet, errors.New("Could not find droplet: " + name)
 }
 
-func (me *DropletManager) getSnapshot(name string) (godo.Image, error) {
+func (me *DropletHandler) getSnapshot(name string) (godo.Image, error) {
 	name = DROPLET_NS + name
 	page := 0
 	perPage := 200
@@ -216,7 +216,7 @@ func (me *DropletManager) getSnapshot(name string) (godo.Image, error) {
 	return image, err
 }
 
-func (me *DropletManager) actionWait(actionId int) bool {
+func (me *DropletHandler) actionWait(actionId int) bool {
 	for {
 		a, _, err := me.client.Actions.Get(actionId)
 		if err != nil {

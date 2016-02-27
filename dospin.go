@@ -31,16 +31,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dm := NewDropletManager(settings)
+	dh := NewDropletHandler(settings)
 
-	ip, err := dm.SpinupMachine("minecraft")
+	ip, err := dh.SpinupMachine("minecraft")
 	if err != nil {
 		log.Println("Error:", err)
 		return
 	}
 	log.Println("IP: " + ip)
 
-	if err := dm.SpindownMachine("minecraft"); err != nil {
+	if err := dh.SpindownMachine("minecraft"); err != nil {
 		log.Println("Error:", err)
 		return
 	}

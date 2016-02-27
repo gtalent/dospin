@@ -13,9 +13,10 @@ import (
 	"strconv"
 )
 
-type MachineManager interface {
+type ServerHandler interface {
 	// Takes snapshot name, and returns the IP to connect to.
 	SpinupMachine(name string) (string, error)
+	SpindownMachine(name string) error
 }
 
 type service struct {
@@ -30,12 +31,12 @@ type service struct {
 
 // Listens for clients on given ports to spin up machines for the ports
 type ServiceManager struct {
-	machineManager MachineManager
+	machineManager ServerHandler
 	machineSvcCnt  map[string]int
 	svcConnStatus  map[int]service
 }
 
-func NewServiceHandler(mm MachineManager) *ServiceManager {
+func NewServiceHandler(mm ServerHandler) *ServiceManager {
 	sh := new(ServiceManager)
 	sh.machineManager = mm
 	return sh
