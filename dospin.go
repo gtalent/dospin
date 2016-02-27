@@ -32,16 +32,12 @@ func main() {
 	}
 
 	dh := NewDropletHandler(settings)
+	sm := NewServerManager("minecraft", dh, settings)
+	go sm.Serve()
 
-	ip, err := dh.Spinup("minecraft")
-	if err != nil {
-		log.Println("Error:", err)
-		return
-	}
-	log.Println("IP: " + ip)
+	sm.Spinup()
+	sm.Spindown()
 
-	if err := dh.Spindown("minecraft"); err != nil {
-		log.Println("Error:", err)
-		return
-	}
+	sm.Stop()
+	sm.Done()
 }

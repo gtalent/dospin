@@ -19,7 +19,7 @@ type ServerManager struct {
 	name       string
 	ports      []int
 	in         chan int
-	out        chan int
+	done       chan interface{}
 	usageScore int // spin down server when this reaches 0
 	server     ServerHandler
 }
@@ -27,8 +27,9 @@ type ServerManager struct {
 func NewServerManager(name string, server ServerHandler, settings Settings) *ServerManager {
 	sm := new(ServerManager)
 
+	sm.name = name
 	sm.in = make(chan int)
-	sm.out = make(chan int)
+	sm.done = make(chan interface{})
 	sm.usageScore = 5
 	sm.server = server
 
@@ -52,6 +53,7 @@ func (me *ServerManager) Serve() {
 			running = me.serveAction(action)
 		}
 	}
+	me.done <- 42
 }
 
 /*
@@ -75,6 +77,10 @@ func (me *ServerManager) Stop() {
 	me.in <- SERVERMANAGER_STOP
 }
 
+func (me *ServerManager) Done() {
+	<-me.done
+}
+
 func (me *ServerManager) addPortForwards(ip string) {
 }
 
@@ -87,6 +93,7 @@ func (me *ServerManager) serveAction(action int) bool {
 	case SERVERMANAGER_SPINUP:
 		ip, err := me.server.Spinup(me.name)
 		if err == nil {
+			log.Println("ServerManager: Got IP for", me.name, ":", ip)
 			me.addPortForwards(ip)
 		} else {
 			log.Println("ServerManager: Could not spin up "+me.name+":", err)
