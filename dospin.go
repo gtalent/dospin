@@ -8,31 +8,30 @@
 package main
 
 import (
-	"github.com/digitalocean/godo"
-	"golang.org/x/oauth2"
+	"flag"
 	"log"
 )
 
-type TokenSource struct {
-	AccessToken string
+type cmdOptions struct {
+	config string
 }
 
-func (t *TokenSource) Token() (*oauth2.Token, error) {
-	token := &oauth2.Token{
-		AccessToken: t.AccessToken,
-	}
-	return token, nil
+func parseCmdOptions() cmdOptions {
+	var o cmdOptions
+	flag.StringVar(&o.config, "config", "dospin.json", "Path to the dospin config file")
+	flag.Parse()
+	return o
 }
 
 func main() {
-	settings, err := loadSettings("dospin.json")
+	opts := parseCmdOptions()
+	log.Println("Loading config:", opts.config)
+	settings, err := loadSettings(opts.config)
 	if err != nil {
 		log.Fatal(err)
 	}
-	tokenSource := &TokenSource{settings.Token}
-	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
-	client := godo.NewClient(oauthClient)
-	dm := NewDropletManager(client, settings)
+
+	dm := NewDropletManager(settings)
 
 	ip, err := dm.SpinupMachine("minecraft")
 	if err != nil {
@@ -45,8 +44,4 @@ func main() {
 		log.Println("Error:", err)
 		return
 	}
-	//_, err = client.Droplets.Delete(droplet.ID)
-	//if err != nil {
-	//	log.Println(err)
-	//}
 }

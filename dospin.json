@@ -1,5 +1,5 @@
 {
-	"Token": "<your token here>",
+	"ApiToken": "<your token here>",
 	"Services": {
 		"Minecraft": {
 			"Port": 25565,

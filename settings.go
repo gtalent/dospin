@@ -13,7 +13,7 @@ import (
 )
 
 type Settings struct {
-	Token           string
+	ApiToken        string
 	VirtualDroplets map[string]VirtualDroplet
 }
 

@@ -10,21 +10,38 @@ package main
 import (
 	"errors"
 	"github.com/digitalocean/godo"
+	"golang.org/x/oauth2"
 	"log"
 	"time"
 )
 
 const DROPLET_NS = "dospin-"
 
+type tokenSource struct {
+	AccessToken string
+}
+
+func (t *tokenSource) Token() (*oauth2.Token, error) {
+	token := &oauth2.Token{
+		AccessToken: t.AccessToken,
+	}
+	return token, nil
+}
+
 type DropletManager struct {
 	client   *godo.Client
 	settings Settings
 }
 
-func NewDropletManager(client *godo.Client, settings Settings) *DropletManager {
+func NewDropletManager(settings Settings) *DropletManager {
 	retval := new(DropletManager)
-	retval.client = client
 	retval.settings = settings
+
+	// setup DO client
+	tokenSource := &tokenSource{settings.ApiToken}
+	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
+	retval.client = godo.NewClient(oauthClient)
+
 	return retval
 }
 
@@ -53,20 +70,32 @@ func (me *DropletManager) SpinupMachine(name string) (string, error) {
 
 		log.Println("Spinup: Creating " + name)
 		droplet, _, err := me.client.Droplets.Create(createRequest)
+		if err != nil {
+			log.Println(err)
+			if droplet == nil {
+				return "", err
+			}
+		}
 		// wait until machine is ready
 		for {
 			d, _, err := me.client.Droplets.Get(droplet.ID)
 			if err != nil {
 				log.Println(err)
+				return "", err
 			} else if d.Status == "active" {
 				break
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
-		if err != nil {
-			return "", err
-		}
 		log.Println("Spinup: Created " + name)
+
+		// delete the image
+		log.Println("Spinup: Deleting image " + name)
+		_, err = me.client.Images.Delete(image.ID)
+		if err != nil {
+			log.Println("Spinup: Could not delete image: ", err)
+		}
+		log.Println("Spinup: Deleted image " + name)
 
 		// get the private IP and return it
 		droplet, _, err = me.client.Droplets.Get(droplet.ID)
@@ -97,27 +126,27 @@ func (me *DropletManager) SpindownMachine(name string) error {
 			time.Sleep(100 * time.Millisecond)
 			_, _, err = me.client.DropletActions.Shutdown(droplet.ID)
 			if err != nil {
-				log.Println("Power down of ", name, " failed: ", err)
+				log.Println("Spindown: Power down of ", name, " failed: ", err)
 			}
 		}
 		log.Println("Spindown: Powered down " + name)
 	}
 
 	// snapshot existing droplet
-	log.Println("Spindown: Snapshoting " + name)
+	log.Println("Spindown: Creating image " + name)
 	action, _, err := me.client.DropletActions.Snapshot(droplet.ID, DROPLET_NS+name)
 	if err != nil || !me.actionWait(action.ID) {
 		return err
 	}
-	log.Println("Spindown: Snapshoted " + name)
+	log.Println("Spindown: Creating imaged " + name)
 
 	// delete droplet
-	log.Println("Spindown: Deleting " + name)
+	log.Println("Spindown: Deleting droplet " + name)
 	_, err = me.client.Droplets.Delete(droplet.ID)
 	if err != nil {
 		return err
 	}
-	log.Println("Spindown: Deleted " + name)
+	log.Println("Spindown: Deleted droplet " + name)
 
 	return err
 }
