@@ -1,13 +1,8 @@
 {
 	"ApiToken": "<your token here>",
-	"Services": {
-		"Minecraft": {
-			"Port": 25565,
-			"LogicalDroplet": "minecraft"
-		}
-	},
-	"LogicalServers": {
+	"Servers": {
 		"minecraft": {
+			"Ports": [25565],
 			"Size": "4gb",
 			"Region": "nyc3"
 		}

@@ -57,7 +57,7 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		vd := me.settings.LogicalServers[name]
+		vd := me.settings.Servers[name]
 		createRequest := &godo.DropletCreateRequest{
 			Name:              DROPLET_NS + name,
 			Region:            vd.Region,

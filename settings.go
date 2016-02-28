@@ -13,17 +13,12 @@ import (
 )
 
 type Settings struct {
-	ApiToken       string
-	Services       map[string]Service
-	LogicalServers map[string]LogicalServer
+	ApiToken string
+	Servers  map[string]Server
 }
 
-type Service struct {
-	Port          int
-	LogicalServer string
-}
-
-type LogicalServer struct {
+type Server struct {
+	Ports  []int
 	Size   string
 	Region string
 }

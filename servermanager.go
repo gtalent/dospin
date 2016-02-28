@@ -28,17 +28,11 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 	sm := new(ServerManager)
 
 	sm.name = name
+	sm.ports = settings.Servers[name].Ports
 	sm.in = make(chan int)
 	sm.done = make(chan interface{})
 	sm.usageScore = 5
 	sm.server = server
-
-	// find the ports associated with this server in settings
-	for _, s := range settings.Services {
-		if s.LogicalServer == name {
-			sm.ports = append(sm.ports, s.Port)
-		}
-	}
 
 	return sm
 }
