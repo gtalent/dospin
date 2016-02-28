@@ -18,13 +18,15 @@ func setupPortForward(ip, port string) {
 }
 
 func portUsageCount(ports ...int) int {
-	cmd := "sockstat -4c"
+	cmd := "/usr/bin/sockstat"
+	args := []string{"-4c"}
 	for _, v := range ports {
-		cmd += " -p " + strconv.Itoa(v)
+		args = append(args, "-p")
+		args = append(args, strconv.Itoa(v))
 	}
-	out, err := exec.Command(cmd).Output()
+	out, err := exec.Command(cmd, args...).Output()
 	if err != nil {
-		log.Println("Port Usage Check: Could not run ", cmd)
+		log.Println("Port Usage Check: Could not run \""+cmd+"\":", err)
 	}
 	return bytes.Count(out, []byte{'\n'}) - 1
 }
