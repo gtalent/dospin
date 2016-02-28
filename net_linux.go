@@ -8,10 +8,25 @@
 package main
 
 import (
+	"bytes"
 	"log"
+	"os/exec"
+	"strconv"
 )
 
 // just have this stub to allow building on Linux
 func setupPortForward(ip, port string) {
 	log.Print("Port forwarding not currently implemented for Linux/iptables")
+}
+
+func portUsageCount(ports ...int) int {
+	cmd := "sockstat -4c"
+	for _, v := range ports {
+		cmd += " -p " + strconv.Itoa(v)
+	}
+	out, err := exec.Command(cmd).Output()
+	if err != nil {
+		log.Println("Port Usage Check: Could not run ", cmd)
+	}
+	return bytes.Count(out, []byte{'\n'}) - 1
 }
