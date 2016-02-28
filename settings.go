@@ -18,9 +18,10 @@ type Settings struct {
 }
 
 type Server struct {
-	Ports  []int
-	Size   string
-	Region string
+	Ports       []int
+	InitialSize string
+	Size        string
+	Region      string
 }
 
 func loadSettings(path string) (Settings, error) {

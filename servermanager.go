@@ -92,7 +92,7 @@ func (me *ServerManager) serveAction(action int) bool {
 	case SERVERMANAGER_SPINUP:
 		ip, err := me.server.Spinup(me.name)
 		if err == nil {
-			log.Println("ServerManager: Got IP for", me.name, ":", ip)
+			log.Println("ServerManager: Got IP for", me.name+":", ip)
 			me.addPortForwards(ip)
 		} else {
 			log.Println("ServerManager: Could not spin up "+me.name+":", err)

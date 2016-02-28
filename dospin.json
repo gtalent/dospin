@@ -3,6 +3,7 @@
 	"Servers": {
 		"minecraft": {
 			"Ports": [25565],
+			"InitialSize": "512mb",
 			"Size": "4gb",
 			"Region": "nyc3"
 		}

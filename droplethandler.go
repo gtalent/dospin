@@ -57,11 +57,21 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
 		vd := me.settings.Servers[name]
+
+		// determine droplet size
+		var size string
+		if vd.InitialSize != "" {
+			size = vd.InitialSize
+		} else {
+			size = vd.Size
+		}
+
 		createRequest := &godo.DropletCreateRequest{
 			Name:              DROPLET_NS + name,
 			Region:            vd.Region,
-			Size:              vd.Size,
+			Size:              size,
 			PrivateNetworking: true,
 			Image: godo.DropletCreateImage{
 				ID: image.ID,
@@ -89,6 +99,28 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 		}
 		log.Println("Spinup: Created " + name)
 
+		// resize if necessary
+		if vd.InitialSize != "" && vd.InitialSize != vd.Size {
+			// power off
+			me.poweroff(name)
+
+			// resize
+			log.Println("Spinup: Resizing " + name)
+			action, _, err := me.client.DropletActions.Resize(droplet.ID, vd.Size, false)
+			if err != nil || !me.actionWait(action.ID) {
+				return "", err
+			}
+			log.Println("Spinup: Resized " + name)
+
+			// power back on
+			log.Println("Spinup: Powering on " + name)
+			action, _, err = me.client.DropletActions.PowerOn(droplet.ID)
+			if err != nil || !me.actionWait(action.ID) {
+				return "", err
+			}
+			log.Println("Spinup: Powered on " + name)
+		}
+
 		// delete the image
 		log.Println("Spinup: Deleting image " + name)
 		_, err = me.client.Images.Delete(image.ID)
@@ -113,23 +145,9 @@ func (me *DropletHandler) Spindown(name string) error {
 	}
 
 	// power off
-	if droplet.Status != "off" {
-		log.Println("Spindown: Powering down " + name)
-		// wait until machine is off
-		for {
-			droplet, err = me.getDroplet(name)
-			if err != nil {
-				log.Println(err)
-			} else if droplet.Status == "off" {
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
-			_, _, err = me.client.DropletActions.Shutdown(droplet.ID)
-			if err != nil {
-				log.Println("Spindown: Power down of ", name, " failed: ", err)
-			}
-		}
-		log.Println("Spindown: Powered down " + name)
+	err = me.poweroff(name)
+	if err != nil {
+		return err
 	}
 
 	// snapshot existing droplet
@@ -148,6 +166,35 @@ func (me *DropletHandler) Spindown(name string) error {
 	}
 	log.Println("Spindown: Deleted droplet " + name)
 
+	return err
+}
+
+func (me *DropletHandler) poweroff(name string) error {
+	droplet, err := me.getDroplet(name)
+	if err != nil {
+		return err
+	}
+	if droplet.Status != "off" {
+		log.Println("Powering down " + name)
+		// wait until machine is off
+		for {
+			droplet, err = me.getDroplet(name)
+			if err != nil {
+				log.Println("Power down of", name, "failed:", err)
+				if droplet.ID < 1 {
+					return err
+				}
+			} else if droplet.Status == "off" {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+			_, _, err = me.client.DropletActions.Shutdown(droplet.ID)
+			if err != nil {
+				log.Println("Power down of", name, "failed:", err)
+			}
+		}
+		log.Println("Powered down", name)
+	}
 	return err
 }
 
@@ -220,8 +267,7 @@ func (me *DropletHandler) actionWait(actionId int) bool {
 	for {
 		a, _, err := me.client.Actions.Get(actionId)
 		if err != nil {
-			log.Println("Action failed: ", err)
-			return false
+			log.Println("Action retrieval failed: ", err)
 		} else if a.Status == "completed" {
 			return true
 		} else if a.Status == "errored" {
