@@ -17,11 +17,6 @@ import (
 func setupPortForward(ip, port string) {
 }
 
-func portUsageCount(ports ...[]int) int {
-	const CMD = "sockstat -4c -p 22"
-	return 0
-}
-
 func portUsageCount(ports ...int) int {
 	cmd := "sockstat -4c"
 	for _, v := range ports {
