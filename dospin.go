@@ -12,31 +12,39 @@ import (
 	"log"
 )
 
+const (
+	CMD_SERVE       = "serve"
+	CMD_SPINDOWNALL = "spindownall"
+)
+
 type cmdOptions struct {
 	config string
+	cmd    string
 }
 
 func parseCmdOptions() cmdOptions {
 	var o cmdOptions
 	flag.StringVar(&o.config, "config", "dospin.json", "Path to the dospin config file")
+	flag.StringVar(&o.cmd, "cmd", CMD_SERVE, "Mode to run command in ("+CMD_SERVE+","+CMD_SPINDOWNALL+")")
 	flag.Parse()
 	return o
 }
 
-func testServerManager(settings Settings) {
-	dh := NewDropletHandler(settings)
-	sm := NewServerManager("minecraft", dh, settings)
-	go sm.Serve()
+func spindownAll(opts cmdOptions) {
+	// load settings file
+	settings, err := loadSettings(opts.config)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	sm.Spinup()
-	sm.Spindown()
-
-	sm.Stop()
-	sm.Done()
+	// spin down servers
+	for name, _ := range settings.Servers {
+		dh := NewDropletHandler(settings)
+		dh.Spindown(name)
+	}
 }
 
-func main() {
-	opts := parseCmdOptions()
+func runServer(opts cmdOptions) {
 	log.Println("Loading config:", opts.config)
 	settings, err := loadSettings(opts.config)
 	if err != nil {
@@ -59,4 +67,16 @@ func main() {
 
 	done := make(chan interface{})
 	<-done
+}
+
+func main() {
+	opts := parseCmdOptions()
+	switch opts.cmd {
+	case CMD_SPINDOWNALL:
+		spindownAll(opts)
+	case CMD_SERVE:
+		runServer(opts)
+	default:
+		println("Invalid cmd: " + opts.cmd)
+	}
 }

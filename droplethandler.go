@@ -49,16 +49,19 @@ func NewDropletHandler(settings Settings) *DropletHandler {
   Gets the Droplet if it already exists, instantiates it if it does not.
 */
 func (me *DropletHandler) Spinup(name string) (string, error) {
+	vd := me.settings.Servers[name]
 	if droplet, err := me.getDroplet(name); err == nil {
-		return droplet.PrivateIPv4()
+		if vd.UsePublicIP {
+			return droplet.PublicIPv4()
+		} else {
+			return droplet.PrivateIPv4()
+		}
 	} else {
 		// create the droplet
 		image, err := me.getSnapshot(name)
 		if err != nil {
 			return "", err
 		}
-
-		vd := me.settings.Servers[name]
 
 		// determine droplet size
 		var size string
@@ -130,11 +133,11 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 		log.Println("Spinup: Deleted image " + name)
 
 		// get the private IP and return it
-		droplet, _, err = me.client.Droplets.Get(droplet.ID)
-		if err != nil {
-			return "", err
+		if vd.UsePublicIP {
+			return droplet.PublicIPv4()
+		} else {
+			return droplet.PrivateIPv4()
 		}
-		return droplet.PrivateIPv4()
 	}
 }
 

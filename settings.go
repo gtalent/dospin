@@ -19,6 +19,7 @@ type Settings struct {
 
 type Server struct {
 	Ports       []int
+	UsePublicIP bool
 	InitialSize string
 	Size        string
 	Region      string
