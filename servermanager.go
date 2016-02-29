@@ -15,6 +15,12 @@ const (
 	SERVERMANAGER_STOP
 )
 
+type ServerHandler interface {
+	// Takes snapshot name, and returns the IP to connect to.
+	Spinup(name string) (string, error)
+	Spindown(name string) error
+}
+
 type ServerManager struct {
 	name       string
 	ports      []int

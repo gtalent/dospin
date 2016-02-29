@@ -23,14 +23,7 @@ func parseCmdOptions() cmdOptions {
 	return o
 }
 
-func main() {
-	opts := parseCmdOptions()
-	log.Println("Loading config:", opts.config)
-	settings, err := loadSettings(opts.config)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func testServerManager(settings Settings) {
 	dh := NewDropletHandler(settings)
 	sm := NewServerManager("minecraft", dh, settings)
 	go sm.Serve()
@@ -40,4 +33,30 @@ func main() {
 
 	sm.Stop()
 	sm.Done()
+}
+
+func main() {
+	opts := parseCmdOptions()
+	log.Println("Loading config:", opts.config)
+	settings, err := loadSettings(opts.config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for name, sv := range settings.Servers {
+		dh := NewDropletHandler(settings)
+		sm := NewServerManager(name, dh, settings)
+
+		// start the ServerManager
+		go sm.Serve()
+
+		// assign this ServerManager to all appropriate ports
+		for _, port := range sv.Ports {
+			log.Println("Setting up port", port)
+			setupService(sm, port)
+		}
+	}
+
+	done := make(chan interface{})
+	<-done
 }

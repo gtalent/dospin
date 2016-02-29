@@ -13,36 +13,7 @@ import (
 	"strconv"
 )
 
-type ServerHandler interface {
-	// Takes snapshot name, and returns the IP to connect to.
-	Spinup(name string) (string, error)
-	Spindown(name string) error
-}
-
-type service struct {
-	name string
-	/*
-	 This should start at 0 and should be incremented any time a cleanup check
-	 shows no connections on this port. Once it reaches 5, the port forward
-	 should be deleted along with that port in the map
-	*/
-	connectionStatus int
-}
-
-// Listens for clients on given ports to spin up machines for the ports
-type ServiceManager struct {
-	machineManager ServerHandler
-	machineSvcCnt  map[string]int
-	svcConnStatus  map[int]service
-}
-
-func NewServiceHandler(mm ServerHandler) *ServiceManager {
-	sh := new(ServiceManager)
-	sh.machineManager = mm
-	return sh
-}
-
-func (me *ServiceManager) setupService(serviceName, machineName string, port int) {
+func setupService(serverManager *ServerManager, port int) {
 	portStr := strconv.Itoa(port)
 	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:"+portStr)
 	if err != nil {
@@ -64,16 +35,7 @@ func (me *ServiceManager) setupService(serviceName, machineName string, port int
 					// connection accepted
 
 					// spinup machine
-					ip, err := me.machineManager.Spinup(machineName)
-
-					// setup port forwarding
-					if err == nil {
-						setupPortForward(ip, portStr)
-						me.machineSvcCnt[machineName]++
-						me.svcConnStatus[port] = service{name: serviceName, connectionStatus: 0}
-					} else {
-						log.Print("Could not setup machine "+machineName+":", err)
-					}
+					serverManager.Spinup()
 
 					// close existing connection, not doing anything with it
 					conn.Close()
@@ -81,11 +43,4 @@ func (me *ServiceManager) setupService(serviceName, machineName string, port int
 			}
 		}
 	}()
-}
-
-/*
-  Periodically checks number of connections to each machine and deletes
-  them when they are no longer needed
-*/
-func (me *ServiceManager) cleanup() {
 }
