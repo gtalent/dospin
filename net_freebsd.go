@@ -14,7 +14,19 @@ import (
 	"strconv"
 )
 
-func setupPortForward(ip, port string) {
+func setupPortForward(ruleName, ip, port string) {
+	pfrule := "\"rdr pass on $ext_if proto { tcp, udp } from any to any port {" + port + "} -> " + ip + "\""
+
+	in, err := exec.Command("pfctl", "-a", "\""+ruleName+"\"", "-f", "-").StdinPipe()
+	defer in.Close()
+	if err != nil {
+		log.Println("Port Forwarding:", err)
+	}
+
+	_, err = in.Write([]byte(pfrule))
+	if err != nil {
+		log.Println("Port Forwarding:", err)
+	}
 }
 
 func portUsageCount(ports ...int) int {
