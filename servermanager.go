@@ -7,7 +7,11 @@
 */
 package main
 
-import "log"
+import (
+	"log"
+	"net"
+	"strconv"
+)
 
 const (
 	SERVERMANAGER_SPINUP = iota
@@ -90,6 +94,38 @@ func (me *ServerManager) addPortForwards(ip string) {
 }
 
 func (me *ServerManager) rmPortForwards() {
+}
+
+func (me *ServerManager) setupListener(port int) {
+	portStr := strconv.Itoa(port)
+	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:"+portStr)
+	if err != nil {
+		log.Print("Could not resolve port and listen address:", err)
+		return
+	}
+
+	// listen on port
+	go func() {
+		l, err := net.ListenTCP("tcp", addr)
+		if err != nil {
+			log.Print("Could not listen for TCP connection:", err)
+		} else {
+			for {
+				conn, err := l.AcceptTCP()
+				if err != nil {
+					log.Print("Could not accept TCP connection:", err)
+				} else {
+					// connection accepted
+
+					// spinup machine
+					me.Spinup()
+
+					// close existing connection, not doing anything with it
+					conn.Close()
+				}
+			}
+		}
+	}()
 }
 
 func (me *ServerManager) serveAction(action int) bool {

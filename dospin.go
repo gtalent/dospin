@@ -58,10 +58,10 @@ func runServer(opts cmdOptions) {
 		// start the ServerManager
 		go sm.Serve()
 
-		// assign this ServerManager to all appropriate ports
+		// assign this ServerManager all appropriate ports
 		for _, port := range sv.Ports {
 			log.Println("Setting up port", port)
-			setupService(sm, port)
+			sm.setupListener(port)
 		}
 	}
 
