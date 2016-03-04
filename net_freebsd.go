@@ -14,10 +14,10 @@ import (
 	"strconv"
 )
 
-func setupPortForward(ruleName, ip, port string) {
-	pfrule := "\"rdr pass on $ext_if proto { tcp, udp } from any to any port {" + port + "} -> " + ip + "\""
+func addPortForward(ruleName, ip, port string) {
+	pfrule := "\"rdr pass on $dospin_ext_if proto { tcp, udp } from any to any port {" + port + "} -> " + ip + "\""
 
-	in, err := exec.Command("pfctl", "-a", "\""+ruleName+"\"", "-f", "-").StdinPipe()
+	in, err := exec.Command("pfctl", "-a", "\"dospin_"+ruleName+"\"", "-f", "-").StdinPipe()
 	defer in.Close()
 	if err != nil {
 		log.Println("Port Forwarding:", err)
@@ -29,8 +29,15 @@ func setupPortForward(ruleName, ip, port string) {
 	}
 }
 
+func rmPortForward(ruleName string) {
+	_, err := exec.Command("pfctl", "-a", "\"dospin_"+ruleName+"\"", "-F", "rules").Output()
+	if err != nil {
+		log.Println("Port Forwarding:", err)
+	}
+}
+
 func portUsageCount(ports ...int) int {
-	cmd := "/usr/bin/sockstat"
+	cmd := "sockstat"
 	args := []string{"-4c"}
 	for _, v := range ports {
 		args = append(args, "-p")

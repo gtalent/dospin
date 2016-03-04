@@ -15,7 +15,11 @@ import (
 )
 
 // just have this stub to allow building on Linux
-func setupPortForward(ruleName, ip, port string) {
+func addPortForward(ruleName, ip, port string) {
+	log.Print("Port forwarding not currently implemented for Linux/iptables")
+}
+
+func rmPortForward(ruleName string) {
 	log.Print("Port forwarding not currently implemented for Linux/iptables")
 }
 
