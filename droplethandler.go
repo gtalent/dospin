@@ -159,7 +159,7 @@ func (me *DropletHandler) Spindown(name string) error {
 	if err != nil || !me.actionWait(action.ID) {
 		return err
 	}
-	log.Println("Spindown: Creating imaged " + name)
+	log.Println("Spindown: Created image " + name)
 
 	// delete droplet
 	log.Println("Spindown: Deleting droplet " + name)
