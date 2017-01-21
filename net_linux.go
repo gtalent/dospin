@@ -19,14 +19,12 @@ func addPortForward(ruleName, gatewayInt, localIp, targetIp, port string) {
 	if err != nil {
 		log.Println("iptables error:", err)
 	}
-	log.Println(cmdOut)
 
 	cmdOut, err = exec.Command("iptables", "-A", "FORWARD", "-p", "tcp", "-d", targetIp, "--dport", port, "-j", "ACCEPT").Output()
 	log.Println("iptables", "-A", "FORWARD", "-p", "tcp", "-d", targetIp, "--dport", port, "-j", "ACCEPT")
 	if err != nil {
 		log.Println("iptables error:", err)
 	}
-	log.Println(cmdOut)
 }
 
 func rmPortForward(ruleName string) {

@@ -154,11 +154,13 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 
 		// delete the image
 		log.Println("Spinup: Deleting image " + name)
-		_, err = me.client.Images.Delete(image.ID)
-		if err != nil {
-			log.Println("Spinup: Could not delete image: ", err)
-		} else {
-			log.Println("Spinup: Deleted image " + name)
+		if image.ID > -1 {
+			_, err = me.client.Images.Delete(image.ID)
+			if err != nil {
+				log.Println("Spinup: Could not delete image: ", err)
+			} else {
+				log.Println("Spinup: Deleted image " + name)
+			}
 		}
 
 		// get the private IP and return it
