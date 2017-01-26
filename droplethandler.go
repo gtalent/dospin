@@ -28,6 +28,22 @@ func (t *tokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
+func sshKeys(ids []int) []godo.DropletCreateSSHKey {
+	var out []godo.DropletCreateSSHKey
+	for _, id := range ids {
+		out = append(out, godo.DropletCreateSSHKey{ID: id})
+	}
+	return out
+}
+
+func volumes(names []string) []godo.DropletCreateVolume {
+	var out []godo.DropletCreateVolume
+	for _, name := range names {
+		out = append(out, godo.DropletCreateVolume{Name: name})
+	}
+	return out
+}
+
 type DropletHandler struct {
 	client   *godo.Client
 	settings Settings
@@ -58,9 +74,20 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 		}
 	} else {
 		// create the droplet
-		image, err := me.getSnapshot(name)
-		if err != nil {
-			return "", err
+		var image godo.DropletCreateImage
+
+		if vd.ImageSlug == "" {
+			snapshot, err := me.getSnapshot(name)
+			if err != nil {
+				return "", err
+			}
+			image = godo.DropletCreateImage{
+				ID: snapshot.ID,
+			}
+		} else {
+			image = godo.DropletCreateImage{
+				Slug: vd.ImageSlug,
+			}
 		}
 
 		// determine droplet size
@@ -76,9 +103,10 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 			Region:            vd.Region,
 			Size:              size,
 			PrivateNetworking: true,
-			Image: godo.DropletCreateImage{
-				ID: image.ID,
-			},
+			SSHKeys:           sshKeys(vd.SshKeys),
+			Volumes:           volumes(vd.Volumes),
+			UserData:          vd.UserData,
+			Image:             image,
 		}
 
 		log.Println("Spinup: Creating " + name)
@@ -126,17 +154,27 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 
 		// delete the image
 		log.Println("Spinup: Deleting image " + name)
-		_, err = me.client.Images.Delete(image.ID)
-		if err != nil {
-			log.Println("Spinup: Could not delete image: ", err)
+		if image.ID > -1 {
+			_, err = me.client.Images.Delete(image.ID)
+			if err != nil {
+				log.Println("Spinup: Could not delete image: ", err)
+			} else {
+				log.Println("Spinup: Deleted image " + name)
+			}
 		}
-		log.Println("Spinup: Deleted image " + name)
 
 		// get the private IP and return it
-		if vd.UsePublicIP {
-			return droplet.PublicIPv4()
+
+		// get new copy of droplet that has IP
+		droplet, _, err = me.client.Droplets.Get(droplet.ID)
+		if err == nil {
+			if vd.UsePublicIP {
+				return droplet.PublicIPv4()
+			} else {
+				return droplet.PrivateIPv4()
+			}
 		} else {
-			return droplet.PrivateIPv4()
+			return "", err
 		}
 	}
 }

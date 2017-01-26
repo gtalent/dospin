@@ -8,29 +8,25 @@
 package main
 
 import (
-	"bytes"
 	"log"
 	"os/exec"
-	"strconv"
 )
 
-// just have this stub to allow building on Linux
-func addPortForward(ruleName, ip, port string) {
-	log.Print("Port forwarding not currently implemented for Linux/iptables")
+func addPortForward(ruleName, gatewayInt, localIp, targetIp, port string) {
+	log.Println("Setting up port", port, "to", targetIp)
+	cmdOut, err := exec.Command("iptables", "-A", "PREROUTING", "-t", "nat", "-i", "\""+gatewayInt+"\"", "-p", "tcp", "--dport", port, "-j", "DNAT", "--to", targetIp+":"+port).Output()
+	log.Println("iptables", "-A", "PREROUTING,", "-t", "nat", "-i", "\""+gatewayInt+"\"", "-p", "tcp", "--dport", port, "-j", "DNAT", "--to", targetIp+":"+port)
+	if err != nil {
+		log.Println("iptables error:", err)
+	}
+
+	cmdOut, err = exec.Command("iptables", "-A", "FORWARD", "-p", "tcp", "-d", targetIp, "--dport", port, "-j", "ACCEPT").Output()
+	log.Println("iptables", "-A", "FORWARD", "-p", "tcp", "-d", targetIp, "--dport", port, "-j", "ACCEPT")
+	if err != nil {
+		log.Println("iptables error:", err)
+	}
 }
 
 func rmPortForward(ruleName string) {
 	log.Print("Port forwarding not currently implemented for Linux/iptables")
-}
-
-func portUsageCount(ports ...int) int {
-	cmd := "sockstat -4c"
-	for _, v := range ports {
-		cmd += " -p " + strconv.Itoa(v)
-	}
-	out, err := exec.Command(cmd).Output()
-	if err != nil {
-		log.Println("Port Usage Check: Could not run ", cmd)
-	}
-	return bytes.Count(out, []byte{'\n'}) - 1
 }

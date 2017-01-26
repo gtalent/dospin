@@ -18,14 +18,16 @@ const (
 )
 
 type cmdOptions struct {
-	config string
-	cmd    string
+	config      string
+	cmd         string
+	varStateDir string
 }
 
 func parseCmdOptions() cmdOptions {
 	var o cmdOptions
 	flag.StringVar(&o.cmd, "cmd", CMD_SERVE, "Mode to run command in ("+CMD_SERVE+","+CMD_SPINDOWNALL+")")
-	flag.StringVar(&o.config, "config", "dospin.json", "Path to the dospin config file")
+	flag.StringVar(&o.config, "config", "/etc/dospin.json", "Path to the dospin config file")
+	flag.StringVar(&o.varStateDir, "varstate", "/var/lib/dospin", "Path to the var state directory")
 	flag.Parse()
 	return o
 }

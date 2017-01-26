@@ -13,8 +13,9 @@ import (
 )
 
 type Settings struct {
-	ApiToken string
-	Servers  map[string]Server
+	ApiToken         string
+	GatewayInterface string
+	Servers          map[string]Server
 }
 
 type Server struct {
@@ -23,6 +24,10 @@ type Server struct {
 	InitialSize string
 	Size        string
 	Region      string
+	ImageSlug   string
+	UserData    string
+	SshKeys     []int
+	Volumes     []string
 }
 
 func loadSettings(path string) (Settings, error) {
