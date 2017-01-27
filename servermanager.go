@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"time"
 )
 
 const (
@@ -31,12 +32,14 @@ type ServerHandler interface {
 }
 
 type ServerManager struct {
-	name       string
-	ports      []int
-	in         chan serverManagerEvent
-	done       chan interface{}
-	usageScore int // spin down server when this reaches 0
-	server     ServerHandler
+	name              string
+	ports             []int
+	in                chan serverManagerEvent
+	done              chan interface{}
+	connStatus        chan ConnStatus
+	lastKeepAliveTime time.Time
+	usageScore        int // spin down server when this reaches 0
+	server            ServerHandler
 }
 
 func NewServerManager(name string, server ServerHandler, settings Settings) *ServerManager {
@@ -58,11 +61,22 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 func (me *ServerManager) Serve() {
 	// TODO: see if server is currently up, and setup port forwarding if so
 
+	fiveMin := time.Duration(5) * time.Minute
+	ticker := time.NewTicker(fiveMin)
+
 	// event loop
 	for running := true; running; {
 		select {
+		case status := <-me.connStatus:
+			if status.Status == CONN_ACTIVE {
+				me.lastKeepAliveTime = time.Now()
+			}
 		case action := <-me.in:
 			running = me.serveAction(action)
+		case <-ticker.C:
+			if time.Since(me.lastKeepAliveTime) > fiveMin {
+				me.Spindown()
+			}
 		}
 	}
 
@@ -80,7 +94,7 @@ func (me *ServerManager) Spinup(c *net.TCPConn) {
 /*
  Sends the serve loop a spindown message.
 */
-func (me *ServerManager) Spindown(c *net.TCPConn) {
+func (me *ServerManager) Spindown() {
 	me.in <- serverManagerEvent{eventType: SERVERMANAGER_SPINDOWN}
 }
 
@@ -93,18 +107,6 @@ func (me *ServerManager) Stop() {
 
 func (me *ServerManager) Done() {
 	<-me.done
-}
-
-func (me *ServerManager) addPortForwards(localIp, remoteIp string) {
-	log.Println("Ports:", me.ports)
-	for _, p := range me.ports {
-		port := strconv.Itoa(p)
-		addPortForward(me.name, localIp, remoteIp, port)
-	}
-}
-
-func (me *ServerManager) rmPortForwards() {
-	rmPortForward(me.name)
 }
 
 func (me *ServerManager) setupListener(port int) {
@@ -125,14 +127,9 @@ func (me *ServerManager) setupListener(port int) {
 				conn, err := l.AcceptTCP()
 				if err != nil {
 					log.Print("Could not accept TCP connection:", err)
-				} else {
-					// connection accepted
-
+				} else { // connection accepted
 					// spinup machine
 					me.Spinup(conn)
-
-					// close existing connection, not doing anything with it
-					conn.Close()
 				}
 			}
 		}
@@ -146,16 +143,15 @@ func (me *ServerManager) serveAction(event serverManagerEvent) bool {
 		targetIp, err := me.server.Spinup(me.name)
 		if err == nil {
 			log.Println("ServerManager: Got IP for", me.name+":", targetIp)
-			localIp := event.tcpConn.LocalAddr().String()
-			me.addPortForwards(localIp, targetIp)
+			wanAddr := event.tcpConn.LocalAddr().String()
+			_, port, _ := net.SplitHostPort(wanAddr)
+			go portForward(event.tcpConn, targetIp, port, me.connStatus)
 		} else {
 			log.Println("ServerManager: Could not spin up "+me.name+":", err)
 		}
 	case SERVERMANAGER_SPINDOWN:
 		err := me.server.Spindown(me.name)
-		if err == nil {
-			me.rmPortForwards()
-		} else {
+		if err != nil {
 			log.Println("ServerManager: Could not spin down "+me.name+":", err)
 		}
 	case SERVERMANAGER_STOP:
