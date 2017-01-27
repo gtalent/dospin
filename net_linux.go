@@ -12,19 +12,19 @@ import (
 	"os/exec"
 )
 
-func addPortForward(ruleName, gatewayInt, localIp, targetIp, port string) {
-	log.Println("Setting up port", port, "to", targetIp)
-	cmdOut, err := exec.Command("iptables", "-A", "PREROUTING", "-t", "nat", "-i", "\""+gatewayInt+"\"", "-p", "tcp", "--dport", port, "-j", "DNAT", "--to", targetIp+":"+port).Output()
-	log.Println("iptables", "-A", "PREROUTING,", "-t", "nat", "-i", "\""+gatewayInt+"\"", "-p", "tcp", "--dport", port, "-j", "DNAT", "--to", targetIp+":"+port)
+func addPortForward(ruleName, localIp, remoteIp, port string) {
+	log.Println("Setting up port", port, "to", remoteIp)
+	cmdOut, err := exec.Command("iptables", "-t", "nat", "-A", "PREROUTING", "-p", "tcp", "--dport", port, "-j", "DNAT", "--to-destination", remoteIp+":"+port).Output()
 	if err != nil {
 		log.Println("iptables error:", err)
 	}
+	log.Println(cmdOut)
 
-	cmdOut, err = exec.Command("iptables", "-A", "FORWARD", "-p", "tcp", "-d", targetIp, "--dport", port, "-j", "ACCEPT").Output()
-	log.Println("iptables", "-A", "FORWARD", "-p", "tcp", "-d", targetIp, "--dport", port, "-j", "ACCEPT")
+	cmdOut, err = exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-p", "tcp", "-d", localIp, "--dport", port, "-j", "SNAT", "--to-source", remoteIp).Output()
 	if err != nil {
 		log.Println("iptables error:", err)
 	}
+	log.Println("iptables", "-t", "nat", "-A", "POSTROUTING", "-p", "tcp", "-d", localIp, "--dport", port, "-j", "SNAT", "--to-source", remoteIp)
 }
 
 func rmPortForward(ruleName string) {

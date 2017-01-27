@@ -13,9 +13,8 @@ import (
 )
 
 type Settings struct {
-	ApiToken         string
-	GatewayInterface string
-	Servers          map[string]Server
+	ApiToken string
+	Servers  map[string]Server
 }
 
 type Server struct {

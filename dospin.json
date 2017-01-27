@@ -1,6 +1,5 @@
 {
 	"ApiToken": "<your token here>",
-	"GatewayInterface": "eth0:2",
 	"Servers": {
 		"minecraft": {
 			"Ports": [25565],

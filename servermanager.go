@@ -33,7 +33,6 @@ type ServerHandler interface {
 type ServerManager struct {
 	name       string
 	ports      []int
-	gatewayInt string
 	in         chan serverManagerEvent
 	done       chan interface{}
 	usageScore int // spin down server when this reaches 0
@@ -45,7 +44,6 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 
 	sm.name = name
 	sm.ports = settings.Servers[name].Ports
-	sm.gatewayInt = settings.GatewayInterface
 	sm.in = make(chan serverManagerEvent)
 	sm.done = make(chan interface{})
 	sm.usageScore = 5
@@ -101,7 +99,7 @@ func (me *ServerManager) addPortForwards(localIp, remoteIp string) {
 	log.Println("Ports:", me.ports)
 	for _, p := range me.ports {
 		port := strconv.Itoa(p)
-		addPortForward(me.name, me.gatewayInt, localIp, remoteIp, port)
+		addPortForward(me.name, localIp, remoteIp, port)
 	}
 }
 
