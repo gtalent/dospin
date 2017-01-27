@@ -38,7 +38,6 @@ type ServerManager struct {
 	done              chan interface{}
 	connStatus        chan ConnStatus
 	lastKeepAliveTime time.Time
-	usageScore        int // spin down server when this reaches 0
 	server            ServerHandler
 }
 
@@ -49,7 +48,6 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 	sm.ports = settings.Servers[name].Ports
 	sm.in = make(chan serverManagerEvent)
 	sm.done = make(chan interface{})
-	sm.usageScore = 5
 	sm.server = server
 
 	return sm
@@ -79,6 +77,8 @@ func (me *ServerManager) Serve() {
 			}
 		}
 	}
+
+	ticker.Stop()
 
 	// notify done
 	me.done <- 42

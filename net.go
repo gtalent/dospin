@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 )
 
 const (
@@ -35,12 +36,18 @@ func portForward(wanConn *net.TCPConn, lanIp, port string, connStatus chan ConnS
 	go forwardConn(wanConn, lanConn, done)
 	go forwardConn(lanConn, wanConn, done)
 
+	ticker := time.NewTicker(time.Minute * 1)
 	for i := 0; i < 2; i++ {
-		err = <-done
-		if err != nil {
-			log.Print("Proxy:", err)
+		select {
+		case err = <-done:
+			if err != nil {
+				log.Print("Proxy:", err)
+			}
+		case <-ticker.C:
+			connStatus <- ConnStatus{Status: CONN_ACTIVE}
 		}
 	}
+	ticker.Stop()
 
 	wanConn.Close()
 	lanConn.Close()
