@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 )
 
 const (
@@ -18,14 +19,16 @@ const (
 )
 
 type cmdOptions struct {
-	config string
-	cmd    string
+	config  string
+	logFile string
+	cmd     string
 }
 
 func parseCmdOptions() cmdOptions {
 	var o cmdOptions
 	flag.StringVar(&o.cmd, "cmd", CMD_SERVE, "Mode to run command in ("+CMD_SERVE+","+CMD_SPINDOWNALL+")")
 	flag.StringVar(&o.config, "config", "dospin.json", "Path to the dospin config file")
+	flag.StringVar(&o.logFile, "logFile", "stdout", "Path to the dospin log file")
 	flag.Parse()
 	return o
 }
@@ -45,6 +48,15 @@ func spindownAll(opts cmdOptions) {
 }
 
 func runServer(opts cmdOptions) {
+	if opts.logFile != "stdout" {
+		logFile, err := os.OpenFile(opts.logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
+		if err == nil {
+			log.SetOutput(logFile)
+		} else {
+			log.Print("Could not open log file: ", err)
+
+		}
+	}
 	log.Println("Loading config:", opts.config)
 	settings, err := loadSettings(opts.config)
 	if err != nil {
