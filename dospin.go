@@ -51,6 +51,7 @@ func runServer(opts cmdOptions) {
 	if opts.logFile != "stdout" {
 		logFile, err := os.OpenFile(opts.logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
 		if err == nil {
+			defer logFile.Close()
 			log.SetOutput(logFile)
 		} else {
 			log.Print("Could not open log file: ", err)
