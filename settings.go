@@ -8,26 +8,27 @@
 package main
 
 import (
-	"encoding/json"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 )
 
 type Settings struct {
-	ApiToken string
-	Servers  map[string]Server
+	ApiToken string            `yaml:"api_token"`
+	Servers  map[string]Server `yaml:"servers"`
 }
 
 type Server struct {
-	Ports              []int
-	UsePublicIP        bool
-	InitialSize        string
-	Size               string
-	Region             string
-	UsePersistentImage bool
-	ImageSlug          string
-	UserData           string
-	SshKeys            []string
-	Volumes            []string
+	Ports              []int    `yaml:"ports"`
+	ActivityTimeoutMin int      `yaml:"activity_timeout_min"`
+	UsePublicIP        bool     `yaml:"use_public_ip"`
+	InitialSize        string   `yaml:"initial_size"`
+	Size               string   `yaml:"size"`
+	Region             string   `yaml:"region"`
+	UsePersistentImage bool     `yaml:"use_persistent_image"`
+	ImageSlug          string   `yaml:"image_slug"`
+	UserData           string   `yaml:"user_data"`
+	SshKeys            []string `yaml:"ssh_keys"`
+	Volumes            []string `yaml:"volumes"`
 }
 
 func loadSettings(path string) (Settings, error) {
@@ -37,7 +38,7 @@ func loadSettings(path string) (Settings, error) {
 		return s, err
 	}
 
-	err = json.Unmarshal(data, &s)
+	err = yaml.Unmarshal(data, &s)
 	if err != nil {
 		return s, err
 	}
