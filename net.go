@@ -29,24 +29,26 @@ func portForward(wanConn *net.TCPConn, lanIp, port string, connStatus chan ConnS
 	log.Print("Proxy: Connecting to ", lanIp+":"+port)
 	lanConn, err := net.Dial("tcp", lanIp+":"+port)
 	if err != nil {
-		log.Print("Proxy: LAN dial error:", err)
+		log.Print("Proxy: LAN dial error: ", err)
 		return
 	}
 
 	go forwardConn(wanConn, lanConn, done)
 	go forwardConn(lanConn, wanConn, done)
 
-	ticker := time.NewTicker(time.Minute * 1)
-	for i := 0; i < 2; i++ {
+	ticker := time.NewTicker(1 * time.Minute)
+	for i := 0; i < 2; {
 		select {
 		case err = <-done:
 			if err != nil {
-				log.Print("Proxy:", err)
+				log.Print("Proxy: ", err)
 			}
+			i++
 		case <-ticker.C:
 			connStatus <- ConnStatus{Status: CONN_ACTIVE}
 		}
 	}
+	log.Print("Proxy: ending connection: ", wanConn.LocalAddr().String())
 	ticker.Stop()
 
 	wanConn.Close()

@@ -18,15 +18,16 @@ type Settings struct {
 }
 
 type Server struct {
-	Ports       []int
-	UsePublicIP bool
-	InitialSize string
-	Size        string
-	Region      string
-	ImageSlug   string
-	UserData    string
-	SshKeys     []int
-	Volumes     []string
+	Ports              []int
+	UsePublicIP        bool
+	InitialSize        string
+	Size               string
+	Region             string
+	UsePersistentImage bool
+	ImageSlug          string
+	UserData           string
+	SshKeys            []int
+	Volumes            []string
 }
 
 func loadSettings(path string) (Settings, error) {

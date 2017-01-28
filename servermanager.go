@@ -49,6 +49,7 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 	sm.in = make(chan serverManagerEvent)
 	sm.done = make(chan interface{})
 	sm.server = server
+	sm.lastKeepAliveTime = time.Now()
 
 	return sm
 }
@@ -59,8 +60,8 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 func (me *ServerManager) Serve() {
 	// TODO: see if server is currently up, and setup port forwarding if so
 
-	fiveMin := time.Duration(5) * time.Minute
-	ticker := time.NewTicker(fiveMin)
+	activityTimeout := time.Duration(5 * time.Minute)
+	ticker := time.NewTicker(activityTimeout)
 
 	// event loop
 	for running := true; running; {
@@ -72,8 +73,9 @@ func (me *ServerManager) Serve() {
 		case action := <-me.in:
 			running = me.serveAction(action)
 		case <-ticker.C:
-			if time.Since(me.lastKeepAliveTime) > fiveMin {
-				me.Spindown()
+			if time.Since(me.lastKeepAliveTime) > activityTimeout {
+				log.Println("ServerManager: Activity timeout for", me.name, " - killing server")
+				running = me.serveAction(serverManagerEvent{eventType: SERVERMANAGER_SPINDOWN})
 			}
 		}
 	}
@@ -141,6 +143,7 @@ func (me *ServerManager) serveAction(event serverManagerEvent) bool {
 	switch event.eventType {
 	case SERVERMANAGER_SPINUP:
 		targetIp, err := me.server.Spinup(me.name)
+		me.lastKeepAliveTime = time.Now()
 		if err == nil {
 			log.Println("ServerManager: Got IP for", me.name+":", targetIp)
 			wanAddr := event.tcpConn.LocalAddr().String()

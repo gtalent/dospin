@@ -153,8 +153,8 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 		}
 
 		// delete the image
-		log.Println("Spinup: Deleting image " + name)
-		if image.ID > -1 {
+		if image.ID > 0 {
+			log.Println("Spinup: Deleting image " + name)
 			_, err = me.client.Images.Delete(image.ID)
 			if err != nil {
 				log.Println("Spinup: Could not delete image: ", err)
@@ -182,7 +182,8 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 func (me *DropletHandler) Spindown(name string) error {
 	droplet, err := me.getDroplet(name)
 	if err != nil {
-		return err
+		// droplet not existing is not an error
+		return nil
 	}
 
 	// power off
@@ -192,12 +193,14 @@ func (me *DropletHandler) Spindown(name string) error {
 	}
 
 	// snapshot existing droplet
-	log.Println("Spindown: Creating image " + name)
-	action, _, err := me.client.DropletActions.Snapshot(droplet.ID, DROPLET_NS+name)
-	if err != nil || !me.actionWait(action.ID) {
-		return err
+	if me.settings.Servers[name].UsePersistentImage {
+		log.Println("Spindown: Creating image " + name)
+		action, _, err := me.client.DropletActions.Snapshot(droplet.ID, DROPLET_NS+name)
+		if err != nil || !me.actionWait(action.ID) {
+			return err
+		}
+		log.Println("Spindown: Created image " + name)
 	}
-	log.Println("Spindown: Created image " + name)
 
 	// delete droplet
 	log.Println("Spindown: Deleting droplet " + name)
