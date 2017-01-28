@@ -26,7 +26,7 @@ type Server struct {
 	UsePersistentImage bool
 	ImageSlug          string
 	UserData           string
-	SshKeys            []int
+	SshKeys            []string
 	Volumes            []string
 }
 

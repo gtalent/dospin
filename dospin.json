@@ -7,7 +7,10 @@
 			"InitialSize": "4gb",
 			"Size": "4gb",
 			"Region": "nyc1",
-			"SshKeys": [513314, 1667247],
+			"SshKeys": [
+				"Key1",
+				"gtalent2@gmail.com"
+			],
 			"UsePersistentImage": false,
 			"ImageSlug": "ubuntu-16-04-x64",
 			"Volumes": ["volume-nyc1-01"],

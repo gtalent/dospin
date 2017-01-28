@@ -28,22 +28,6 @@ func (t *tokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func sshKeys(ids []int) []godo.DropletCreateSSHKey {
-	var out []godo.DropletCreateSSHKey
-	for _, id := range ids {
-		out = append(out, godo.DropletCreateSSHKey{ID: id})
-	}
-	return out
-}
-
-func volumes(names []string) []godo.DropletCreateVolume {
-	var out []godo.DropletCreateVolume
-	for _, name := range names {
-		out = append(out, godo.DropletCreateVolume{Name: name})
-	}
-	return out
-}
-
 type DropletHandler struct {
 	client   *godo.Client
 	settings Settings
@@ -103,8 +87,8 @@ func (me *DropletHandler) Spinup(name string) (string, error) {
 			Region:            vd.Region,
 			Size:              size,
 			PrivateNetworking: true,
-			SSHKeys:           sshKeys(vd.SshKeys),
-			Volumes:           volumes(vd.Volumes),
+			SSHKeys:           me.sshKeys(vd.SshKeys),
+			Volumes:           me.volumes(vd.Volumes),
 			UserData:          vd.UserData,
 			Image:             image,
 		}
@@ -320,4 +304,47 @@ func (me *DropletHandler) actionWait(actionId int) bool {
 		}
 		time.Sleep(1000 * time.Millisecond)
 	}
+}
+
+func (me *DropletHandler) sshKeys(keyNames []string) []godo.DropletCreateSSHKey {
+	// build key map
+	page := 0
+	perPage := 200
+	keyMap := make(map[string]string)
+	for {
+		page++
+		opt := &godo.ListOptions{
+			Page:    page,
+			PerPage: perPage,
+		}
+		keys, _, err := me.client.Keys.List(opt)
+		if err != nil {
+			break
+		}
+
+		for _, v := range keys {
+			keyMap[v.Name] = v.Fingerprint
+		}
+
+		// check next page?
+		if len(keys) < perPage {
+			break
+		}
+	}
+
+	// build output key list
+	var out []godo.DropletCreateSSHKey
+	for _, kn := range keyNames {
+		fp := keyMap[kn]
+		out = append(out, godo.DropletCreateSSHKey{Fingerprint: fp})
+	}
+	return out
+}
+
+func (me *DropletHandler) volumes(names []string) []godo.DropletCreateVolume {
+	var out []godo.DropletCreateVolume
+	for _, name := range names {
+		out = append(out, godo.DropletCreateVolume{Name: name})
+	}
+	return out
 }

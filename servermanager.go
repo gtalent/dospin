@@ -74,7 +74,6 @@ func (me *ServerManager) Serve() {
 			running = me.serveAction(action)
 		case <-ticker.C:
 			if time.Since(me.lastKeepAliveTime) > activityTimeout {
-				log.Println("ServerManager: Activity timeout for", me.name, " - killing server")
 				running = me.serveAction(serverManagerEvent{eventType: SERVERMANAGER_SPINDOWN})
 			}
 		}
