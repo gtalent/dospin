@@ -23,4 +23,3 @@ servers:
       mount -o discard,defaults /dev/disk/by-id/scsi-0DO_Volume_volume-nyc1-01 /mnt/volume-nyc1-01
       echo /dev/disk/by-id/scsi-0DO_Volume_volume-nyc1-01 /mnt/volume-nyc1-01 ext4 defaults,nofail,discard 0 0 | tee -a /etc/fstab
       docker run -d --restart=always -p 25565:25565 -v /mnt/volume-nyc1-01/minecraft-server:/minecraft-server -w /minecraft-server -t java:8-alpine sh start.sh
-
