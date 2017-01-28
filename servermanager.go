@@ -35,7 +35,7 @@ type ServerManager struct {
 	name              string
 	ports             []int
 	in                chan serverManagerEvent
-	done              chan interface{}
+	done              chan int
 	connStatus        chan ConnStatus
 	lastKeepAliveTime time.Time
 	server            ServerHandler
@@ -47,7 +47,8 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 	sm.name = name
 	sm.ports = settings.Servers[name].Ports
 	sm.in = make(chan serverManagerEvent)
-	sm.done = make(chan interface{})
+	sm.done = make(chan int)
+	sm.connStatus = make(chan ConnStatus)
 	sm.server = server
 	sm.lastKeepAliveTime = time.Now()
 
@@ -82,7 +83,7 @@ func (me *ServerManager) Serve() {
 	ticker.Stop()
 
 	// notify done
-	me.done <- 42
+	me.done <- 0
 }
 
 /*
