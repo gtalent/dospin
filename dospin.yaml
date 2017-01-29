@@ -4,6 +4,7 @@ servers:
   minecraft:
     ports:
     - 25565
+    activity_timeout_min: 20m
     use_public_ip: false
     initial_size: 4gb
     size: 4gb

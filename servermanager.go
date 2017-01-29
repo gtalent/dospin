@@ -39,6 +39,7 @@ type ServerManager struct {
 	connStatus        chan ConnStatus
 	lastKeepAliveTime time.Time
 	server            ServerHandler
+	activityTimeout   time.Duration
 }
 
 func NewServerManager(name string, server ServerHandler, settings Settings) *ServerManager {
@@ -52,6 +53,13 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 	sm.server = server
 	sm.lastKeepAliveTime = time.Now()
 
+	activityTimeout, err := time.ParseDuration(settings.Servers[sm.name].ActivityTimeout)
+	if err != nil { // invalid timeout, default to 5 minutes
+		activityTimeout = time.Duration(5 * time.Minute)
+	}
+	sm.activityTimeout = activityTimeout
+	log.Println("ServerManager: ", name, " has activity timeout of ", sm.activityTimeout.String())
+
 	return sm
 }
 
@@ -61,8 +69,7 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 func (me *ServerManager) Serve() {
 	// TODO: see if server is currently up, and setup port forwarding if so
 
-	activityTimeout := time.Duration(5 * time.Minute)
-	ticker := time.NewTicker(activityTimeout)
+	ticker := time.NewTicker(1 * time.Minute)
 
 	// event loop
 	for running := true; running; {
@@ -74,7 +81,7 @@ func (me *ServerManager) Serve() {
 		case action := <-me.in:
 			running = me.serveAction(action)
 		case <-ticker.C:
-			if time.Since(me.lastKeepAliveTime) > activityTimeout {
+			if time.Since(me.lastKeepAliveTime) > me.activityTimeout {
 				running = me.serveAction(serverManagerEvent{eventType: SERVERMANAGER_SPINDOWN})
 			}
 		}

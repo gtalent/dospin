@@ -19,7 +19,7 @@ type Settings struct {
 
 type Server struct {
 	Ports              []int    `yaml:"ports"`
-	ActivityTimeoutMin int      `yaml:"activity_timeout_min"`
+	ActivityTimeout    string   `yaml:"activity_timeout"`
 	UsePublicIP        bool     `yaml:"use_public_ip"`
 	InitialSize        string   `yaml:"initial_size"`
 	Size               string   `yaml:"size"`
