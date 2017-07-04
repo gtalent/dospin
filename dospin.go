@@ -47,7 +47,7 @@ func spindownAll(opts cmdOptions) {
 	}
 }
 
-func runServer(opts cmdOptions) {
+func runServer(opts cmdOptions) int {
 	if opts.logFile != "stdout" {
 		logFile, err := os.OpenFile(opts.logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
 		if err == nil {
@@ -78,8 +78,8 @@ func runServer(opts cmdOptions) {
 		}
 	}
 
-	done := make(chan interface{})
-	<-done
+	done := make(chan int)
+	return <-done
 }
 
 func main() {
