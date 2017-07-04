@@ -11,4 +11,4 @@ RUN mv dospin /usr/local/bin/dospin
 
 
 ENTRYPOINT dospin
-CMD -log /var/log/dospin/dospin.log
+CMD -logFile /var/log/dospin/dospin.log
