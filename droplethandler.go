@@ -38,7 +38,7 @@ type DropletHandler struct {
 func NewDropletHandler(settings Settings) *DropletHandler {
 	retval := new(DropletHandler)
 	retval.settings = settings
-	retval.ctx = context.TODO()
+	retval.ctx = context.Background()
 
 	// setup DO client
 	tokenSource := &tokenSource{settings.ApiToken}
