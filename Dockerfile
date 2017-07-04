@@ -10,5 +10,4 @@ RUN go build -o dospin
 RUN mv dospin /usr/local/bin/dospin
 
 
-ENTRYPOINT dospin
-CMD -logFile /var/log/dospin/dospin.log
+CMD dospin -logFile /var/log/dospin/dospin.log
