@@ -5,6 +5,7 @@
    License, v. 2.0. If a copy of the MPL was not distributed with this
    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
+
 package main
 
 import (
@@ -12,12 +13,12 @@ import (
 	"io/ioutil"
 )
 
-type Settings struct {
-	ApiToken string            `yaml:"api_token"`
-	Servers  map[string]Server `yaml:"servers"`
+type settings struct {
+	APIToken string            `yaml:"api_token"`
+	Servers  map[string]server `yaml:"servers"`
 }
 
-type Server struct {
+type server struct {
 	Ports              []int    `yaml:"ports"`
 	ActivityTimeout    string   `yaml:"activity_timeout"`
 	UsePublicIP        bool     `yaml:"use_public_ip"`
@@ -27,12 +28,12 @@ type Server struct {
 	UsePersistentImage bool     `yaml:"use_persistent_image"`
 	ImageSlug          string   `yaml:"image_slug"`
 	UserData           string   `yaml:"user_data"`
-	SshKeys            []string `yaml:"ssh_keys"`
+	SSHKeys            []string `yaml:"ssh_keys"`
 	Volumes            []string `yaml:"volumes"`
 }
 
-func loadSettings(path string) (Settings, error) {
-	var s Settings
+func loadSettings(path string) (settings, error) {
+	var s settings
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return s, err

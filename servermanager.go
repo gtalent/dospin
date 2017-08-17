@@ -5,6 +5,7 @@
    License, v. 2.0. If a copy of the MPL was not distributed with this
    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
+
 package main
 
 import (
@@ -15,9 +16,9 @@ import (
 )
 
 const (
-	SERVERMANAGER_SPINUP = iota
-	SERVERMANAGER_SPINDOWN
-	SERVERMANAGER_STOP
+	servermanagerSpinup = iota
+	servermanagerSpindown
+	serverManagerStop
 )
 
 type serverManagerEvent struct {
@@ -25,31 +26,34 @@ type serverManagerEvent struct {
 	tcpConn   *net.TCPConn
 }
 
+/*
+ServerHandler is an interface for spinning up and spinning down servers.
+*/
 type ServerHandler interface {
 	// Takes snapshot name, and returns the IP to connect to.
 	Spinup(name string) (string, error)
 	Spindown(name string) error
 }
 
-type ServerManager struct {
+type serverManager struct {
 	name              string
 	ports             []int
 	in                chan serverManagerEvent
 	done              chan int
-	connStatus        chan ConnStatus
+	connStatus        chan connStatus
 	lastKeepAliveTime time.Time
 	server            ServerHandler
 	activityTimeout   time.Duration
 }
 
-func NewServerManager(name string, server ServerHandler, settings Settings) *ServerManager {
-	sm := new(ServerManager)
+func newServerManager(name string, server ServerHandler, settings settings) *serverManager {
+	sm := new(serverManager)
 
 	sm.name = name
 	sm.ports = settings.Servers[name].Ports
 	sm.in = make(chan serverManagerEvent)
 	sm.done = make(chan int)
-	sm.connStatus = make(chan ConnStatus)
+	sm.connStatus = make(chan connStatus)
 	sm.server = server
 	sm.lastKeepAliveTime = time.Now()
 
@@ -58,7 +62,7 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 		activityTimeout = time.Duration(5 * time.Minute)
 	}
 	sm.activityTimeout = activityTimeout
-	log.Println("ServerManager: ", name, " has activity timeout of ", sm.activityTimeout.String())
+	log.Println("serverManager: ", name, " has activity timeout of ", sm.activityTimeout.String())
 
 	return sm
 }
@@ -66,7 +70,7 @@ func NewServerManager(name string, server ServerHandler, settings Settings) *Ser
 /*
  Serves channel requests.
 */
-func (me *ServerManager) Serve() {
+func (me *serverManager) Serve() {
 	// TODO: see if server is currently up, and setup port forwarding if so
 
 	ticker := time.NewTicker(1 * time.Minute)
@@ -75,14 +79,14 @@ func (me *ServerManager) Serve() {
 	for running := true; running; {
 		select {
 		case status := <-me.connStatus:
-			if status.Status == CONN_ACTIVE {
+			if status.Status == connActive {
 				me.lastKeepAliveTime = time.Now()
 			}
 		case action := <-me.in:
 			running = me.serveAction(action)
 		case <-ticker.C:
 			if time.Since(me.lastKeepAliveTime) > me.activityTimeout {
-				running = me.serveAction(serverManagerEvent{eventType: SERVERMANAGER_SPINDOWN})
+				running = me.serveAction(serverManagerEvent{eventType: servermanagerSpindown})
 			}
 		}
 	}
@@ -96,29 +100,29 @@ func (me *ServerManager) Serve() {
 /*
  Sends the serve loop a spinup message.
 */
-func (me *ServerManager) Spinup(c *net.TCPConn) {
-	me.in <- serverManagerEvent{eventType: SERVERMANAGER_SPINUP, tcpConn: c}
+func (me *serverManager) Spinup(c *net.TCPConn) {
+	me.in <- serverManagerEvent{eventType: servermanagerSpinup, tcpConn: c}
 }
 
 /*
  Sends the serve loop a spindown message.
 */
-func (me *ServerManager) Spindown() {
-	me.in <- serverManagerEvent{eventType: SERVERMANAGER_SPINDOWN}
+func (me *serverManager) Spindown() {
+	me.in <- serverManagerEvent{eventType: servermanagerSpindown}
 }
 
 /*
  Sends the serve loop a quit message.
 */
-func (me *ServerManager) Stop() {
-	me.in <- serverManagerEvent{eventType: SERVERMANAGER_STOP}
+func (me *serverManager) Stop() {
+	me.in <- serverManagerEvent{eventType: serverManagerStop}
 }
 
-func (me *ServerManager) Done() {
+func (me *serverManager) Done() {
 	<-me.done
 }
 
-func (me *ServerManager) setupListener(port int) {
+func (me *serverManager) setupListener(port int) {
 	portStr := strconv.Itoa(port)
 	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:"+portStr)
 	if err != nil {
@@ -145,26 +149,26 @@ func (me *ServerManager) setupListener(port int) {
 	}()
 }
 
-func (me *ServerManager) serveAction(event serverManagerEvent) bool {
+func (me *serverManager) serveAction(event serverManagerEvent) bool {
 	running := true
 	switch event.eventType {
-	case SERVERMANAGER_SPINUP:
-		targetIp, err := me.server.Spinup(me.name)
+	case servermanagerSpinup:
+		targetIP, err := me.server.Spinup(me.name)
 		me.lastKeepAliveTime = time.Now()
 		if err == nil {
-			log.Println("ServerManager: Got IP for", me.name+":", targetIp)
+			log.Println("serverManager: Got IP for", me.name+":", targetIP)
 			wanAddr := event.tcpConn.LocalAddr().String()
 			_, port, _ := net.SplitHostPort(wanAddr)
-			go portForward(event.tcpConn, targetIp, port, me.connStatus)
+			go portForward(event.tcpConn, targetIP, port, me.connStatus)
 		} else {
-			log.Println("ServerManager: Could not spin up "+me.name+":", err)
+			log.Println("serverManager: Could not spin up "+me.name+":", err)
 		}
-	case SERVERMANAGER_SPINDOWN:
+	case servermanagerSpindown:
 		err := me.server.Spindown(me.name)
 		if err != nil {
-			log.Println("ServerManager: Could not spin down "+me.name+":", err)
+			log.Println("serverManager: Could not spin down "+me.name+":", err)
 		}
-	case SERVERMANAGER_STOP:
+	case serverManagerStop:
 		running = false
 	}
 	return running

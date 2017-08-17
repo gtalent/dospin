@@ -5,6 +5,7 @@
    License, v. 2.0. If a copy of the MPL was not distributed with this
    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
+
 package main
 
 import (
@@ -14,8 +15,8 @@ import (
 )
 
 const (
-	CMD_SERVE       = "serve"
-	CMD_SPINDOWNALL = "spindownall"
+	cmdServe       = "serve"
+	cmdSpindownall = "spindownall"
 )
 
 type cmdOptions struct {
@@ -26,7 +27,7 @@ type cmdOptions struct {
 
 func parseCmdOptions() cmdOptions {
 	var o cmdOptions
-	flag.StringVar(&o.cmd, "cmd", CMD_SERVE, "Mode to run command in ("+CMD_SERVE+","+CMD_SPINDOWNALL+")")
+	flag.StringVar(&o.cmd, "cmd", cmdServe, "Mode to run command in ("+cmdServe+","+cmdSpindownall+")")
 	flag.StringVar(&o.config, "config", "dospin.yaml", "Path to the dospin config file")
 	flag.StringVar(&o.logFile, "logFile", "stdout", "Path to the dospin log file")
 	flag.Parse()
@@ -41,8 +42,8 @@ func spindownAll(opts cmdOptions) {
 	}
 
 	// spin down servers
-	for name, _ := range settings.Servers {
-		dh := NewDropletHandler(settings)
+	for name := range settings.Servers {
+		dh := newDropletHandler(settings)
 		dh.Spindown(name)
 	}
 }
@@ -65,8 +66,8 @@ func runServer(opts cmdOptions) int {
 	}
 
 	for name, sv := range settings.Servers {
-		dh := NewDropletHandler(settings)
-		sm := NewServerManager(name, dh, settings)
+		dh := newDropletHandler(settings)
+		sm := newServerManager(name, dh, settings)
 
 		// start the ServerManager
 		go sm.Serve()
@@ -85,9 +86,9 @@ func runServer(opts cmdOptions) int {
 func main() {
 	opts := parseCmdOptions()
 	switch opts.cmd {
-	case CMD_SPINDOWNALL:
+	case cmdSpindownall:
 		spindownAll(opts)
-	case CMD_SERVE:
+	case cmdServe:
 		runServer(opts)
 	default:
 		println("Invalid cmd: " + opts.cmd)

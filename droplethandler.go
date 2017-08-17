@@ -5,6 +5,7 @@
    License, v. 2.0. If a copy of the MPL was not distributed with this
    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
+
 package main
 
 import (
@@ -16,7 +17,7 @@ import (
 	"time"
 )
 
-const DROPLET_NS = "dospin-"
+const dropletNS = "dospin-"
 
 type tokenSource struct {
 	AccessToken string
@@ -29,19 +30,19 @@ func (t *tokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-type DropletHandler struct {
+type dropletHandler struct {
 	client   *godo.Client
 	ctx      context.Context
-	settings Settings
+	settings settings
 }
 
-func NewDropletHandler(settings Settings) *DropletHandler {
-	retval := new(DropletHandler)
+func newDropletHandler(settings settings) *dropletHandler {
+	retval := new(dropletHandler)
 	retval.settings = settings
 	retval.ctx = context.Background()
 
 	// setup DO client
-	tokenSource := &tokenSource{settings.ApiToken}
+	tokenSource := &tokenSource{settings.APIToken}
 	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
 	retval.client = godo.NewClient(oauthClient)
 
@@ -51,122 +52,118 @@ func NewDropletHandler(settings Settings) *DropletHandler {
 /*
   Gets the Droplet if it already exists, instantiates it if it does not.
 */
-func (me *DropletHandler) Spinup(name string) (string, error) {
+func (me *dropletHandler) Spinup(name string) (string, error) {
 	vd := me.settings.Servers[name]
 	if droplet, err := me.getDroplet(name); err == nil {
 		if vd.UsePublicIP {
 			return droplet.PublicIPv4()
-		} else {
-			return droplet.PrivateIPv4()
+		}
+		return droplet.PrivateIPv4()
+	}
+	// create the droplet
+	var image godo.DropletCreateImage
+
+	if vd.ImageSlug == "" {
+		snapshot, err := me.getSnapshot(name)
+		if err != nil {
+			return "", err
+		}
+		image = godo.DropletCreateImage{
+			ID: snapshot.ID,
 		}
 	} else {
-		// create the droplet
-		var image godo.DropletCreateImage
-
-		if vd.ImageSlug == "" {
-			snapshot, err := me.getSnapshot(name)
-			if err != nil {
-				return "", err
-			}
-			image = godo.DropletCreateImage{
-				ID: snapshot.ID,
-			}
-		} else {
-			image = godo.DropletCreateImage{
-				Slug: vd.ImageSlug,
-			}
+		image = godo.DropletCreateImage{
+			Slug: vd.ImageSlug,
 		}
+	}
 
-		// determine droplet size
-		var size string
-		if vd.InitialSize != "" {
-			size = vd.InitialSize
-		} else {
-			size = vd.Size
-		}
+	// determine droplet size
+	var size string
+	if vd.InitialSize != "" {
+		size = vd.InitialSize
+	} else {
+		size = vd.Size
+	}
 
-		createRequest := &godo.DropletCreateRequest{
-			Name:              DROPLET_NS + name,
-			Region:            vd.Region,
-			Size:              size,
-			PrivateNetworking: true,
-			SSHKeys:           me.sshKeys(vd.SshKeys),
-			Volumes:           me.volumes(vd.Volumes),
-			UserData:          vd.UserData,
-			Image:             image,
-		}
+	createRequest := &godo.DropletCreateRequest{
+		Name:              dropletNS + name,
+		Region:            vd.Region,
+		Size:              size,
+		PrivateNetworking: true,
+		SSHKeys:           me.sshKeys(vd.SSHKeys),
+		Volumes:           me.volumes(vd.Volumes),
+		UserData:          vd.UserData,
+		Image:             image,
+	}
 
-		log.Println("Spinup: Creating " + name)
-		droplet, _, err := me.client.Droplets.Create(me.ctx, createRequest)
-		if err != nil {
-			log.Println(err)
-			if droplet == nil {
-				return "", err
-			}
-		}
-		// wait until machine is ready
-		for {
-			d, _, err := me.client.Droplets.Get(me.ctx, droplet.ID)
-			if err != nil {
-				log.Println(err)
-				return "", err
-			} else if d.Status == "active" {
-				break
-			}
-			time.Sleep(500 * time.Millisecond)
-		}
-		log.Println("Spinup: Created " + name)
-
-		// resize if necessary
-		if vd.InitialSize != "" && vd.InitialSize != vd.Size {
-			// power off
-			me.poweroff(name)
-
-			// resize
-			log.Println("Spinup: Resizing " + name)
-			action, _, err := me.client.DropletActions.Resize(me.ctx, droplet.ID, vd.Size, false)
-			if err != nil || !me.actionWait(action.ID) {
-				return "", err
-			}
-			log.Println("Spinup: Resized " + name)
-
-			// power back on
-			log.Println("Spinup: Powering on " + name)
-			action, _, err = me.client.DropletActions.PowerOn(me.ctx, droplet.ID)
-			if err != nil || !me.actionWait(action.ID) {
-				return "", err
-			}
-			log.Println("Spinup: Powered on " + name)
-		}
-
-		// delete the image
-		if image.ID > 0 {
-			log.Println("Spinup: Deleting image " + name)
-			_, err = me.client.Images.Delete(me.ctx, image.ID)
-			if err != nil {
-				log.Println("Spinup: Could not delete image: ", err)
-			} else {
-				log.Println("Spinup: Deleted image " + name)
-			}
-		}
-
-		// get the private IP and return it
-
-		// get new copy of droplet that has IP
-		droplet, _, err = me.client.Droplets.Get(me.ctx, droplet.ID)
-		if err == nil {
-			if vd.UsePublicIP {
-				return droplet.PublicIPv4()
-			} else {
-				return droplet.PrivateIPv4()
-			}
-		} else {
+	log.Println("Spinup: Creating " + name)
+	droplet, _, err := me.client.Droplets.Create(me.ctx, createRequest)
+	if err != nil {
+		log.Println(err)
+		if droplet == nil {
 			return "", err
 		}
 	}
+	// wait until machine is ready
+	for {
+		d, _, err := me.client.Droplets.Get(me.ctx, droplet.ID)
+		if err != nil {
+			log.Println(err)
+			return "", err
+		} else if d.Status == "active" {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	log.Println("Spinup: Created " + name)
+
+	// resize if necessary
+	if vd.InitialSize != "" && vd.InitialSize != vd.Size {
+		// power off
+		me.poweroff(name)
+
+		// resize
+		log.Println("Spinup: Resizing " + name)
+		action, _, err := me.client.DropletActions.Resize(me.ctx, droplet.ID, vd.Size, false)
+		if err != nil || !me.actionWait(action.ID) {
+			return "", err
+		}
+		log.Println("Spinup: Resized " + name)
+
+		// power back on
+		log.Println("Spinup: Powering on " + name)
+		action, _, err = me.client.DropletActions.PowerOn(me.ctx, droplet.ID)
+		if err != nil || !me.actionWait(action.ID) {
+			return "", err
+		}
+		log.Println("Spinup: Powered on " + name)
+	}
+
+	// delete the image
+	if image.ID > 0 {
+		log.Println("Spinup: Deleting image " + name)
+		_, err = me.client.Images.Delete(me.ctx, image.ID)
+		if err != nil {
+			log.Println("Spinup: Could not delete image: ", err)
+		} else {
+			log.Println("Spinup: Deleted image " + name)
+		}
+	}
+
+	// get the private IP and return it
+
+	// get new copy of droplet that has IP
+	droplet, _, err = me.client.Droplets.Get(me.ctx, droplet.ID)
+	if err == nil {
+		if vd.UsePublicIP {
+			return droplet.PublicIPv4()
+		}
+		return droplet.PrivateIPv4()
+	}
+	return "", err
 }
 
-func (me *DropletHandler) Spindown(name string) error {
+func (me *dropletHandler) Spindown(name string) error {
 	droplet, err := me.getDroplet(name)
 	if err != nil {
 		// droplet not existing is not an error
@@ -182,7 +179,7 @@ func (me *DropletHandler) Spindown(name string) error {
 	// snapshot existing droplet
 	if me.settings.Servers[name].UsePersistentImage {
 		log.Println("Spindown: Creating image " + name)
-		action, _, err := me.client.DropletActions.Snapshot(me.ctx, droplet.ID, DROPLET_NS+name)
+		action, _, err := me.client.DropletActions.Snapshot(me.ctx, droplet.ID, dropletNS+name)
 		if err != nil || !me.actionWait(action.ID) {
 			return err
 		}
@@ -200,7 +197,7 @@ func (me *DropletHandler) Spindown(name string) error {
 	return err
 }
 
-func (me *DropletHandler) poweroff(name string) error {
+func (me *dropletHandler) poweroff(name string) error {
 	droplet, err := me.getDroplet(name)
 	if err != nil {
 		return err
@@ -229,8 +226,8 @@ func (me *DropletHandler) poweroff(name string) error {
 	return err
 }
 
-func (me *DropletHandler) getDroplet(name string) (godo.Droplet, error) {
-	name = DROPLET_NS + name
+func (me *dropletHandler) getDroplet(name string) (godo.Droplet, error) {
+	name = dropletNS + name
 	page := 0
 	perPage := 200
 	var droplet godo.Droplet
@@ -259,8 +256,8 @@ func (me *DropletHandler) getDroplet(name string) (godo.Droplet, error) {
 	return droplet, errors.New("Could not find droplet: " + name)
 }
 
-func (me *DropletHandler) getSnapshot(name string) (godo.Image, error) {
-	name = DROPLET_NS + name
+func (me *dropletHandler) getSnapshot(name string) (godo.Image, error) {
+	name = dropletNS + name
 	page := 0
 	perPage := 200
 	var image godo.Image
@@ -294,9 +291,9 @@ func (me *DropletHandler) getSnapshot(name string) (godo.Image, error) {
 	return image, err
 }
 
-func (me *DropletHandler) actionWait(actionId int) bool {
+func (me *dropletHandler) actionWait(actionID int) bool {
 	for {
-		a, _, err := me.client.Actions.Get(me.ctx, actionId)
+		a, _, err := me.client.Actions.Get(me.ctx, actionID)
 		if err != nil {
 			log.Println("Action retrieval failed: ", err)
 		} else if a.Status == "completed" {
@@ -309,7 +306,7 @@ func (me *DropletHandler) actionWait(actionId int) bool {
 	}
 }
 
-func (me *DropletHandler) sshKeys(keyNames []string) []godo.DropletCreateSSHKey {
+func (me *dropletHandler) sshKeys(keyNames []string) []godo.DropletCreateSSHKey {
 	// build key map
 	page := 0
 	perPage := 200
@@ -344,7 +341,7 @@ func (me *DropletHandler) sshKeys(keyNames []string) []godo.DropletCreateSSHKey 
 	return out
 }
 
-func (me *DropletHandler) volumes(names []string) []godo.DropletCreateVolume {
+func (me *dropletHandler) volumes(names []string) []godo.DropletCreateVolume {
 	var out []godo.DropletCreateVolume
 	for _, name := range names {
 		out = append(out, godo.DropletCreateVolume{Name: name})

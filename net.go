@@ -5,6 +5,7 @@
    License, v. 2.0. If a copy of the MPL was not distributed with this
    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
+
 package main
 
 import (
@@ -15,19 +16,19 @@ import (
 )
 
 const (
-	CONN_ACTIVE = iota
-	CONN_DISCONNECTED
+	connActive = iota
+	connDisconnected
 )
 
-type ConnStatus struct {
+type connStatus struct {
 	Status int
 	Err    error
 }
 
-func portForward(wanConn *net.TCPConn, lanIp, port string, connStatus chan ConnStatus) {
+func portForward(wanConn *net.TCPConn, lanIP, port string, cs chan connStatus) {
 	done := make(chan error)
-	log.Print("Proxy: Connecting to ", lanIp+":"+port)
-	lanConn, err := net.Dial("tcp", lanIp+":"+port)
+	log.Print("Proxy: Connecting to ", lanIP+":"+port)
+	lanConn, err := net.Dial("tcp", lanIP+":"+port)
 	if err != nil {
 		log.Print("Proxy: LAN dial error: ", err)
 		return
@@ -45,7 +46,7 @@ func portForward(wanConn *net.TCPConn, lanIp, port string, connStatus chan ConnS
 			}
 			i++
 		case <-ticker.C:
-			connStatus <- ConnStatus{Status: CONN_ACTIVE}
+			cs <- connStatus{Status: connActive}
 		}
 	}
 	log.Print("Proxy: ending connection: ", wanConn.LocalAddr().String())
@@ -54,7 +55,7 @@ func portForward(wanConn *net.TCPConn, lanIp, port string, connStatus chan ConnS
 	wanConn.Close()
 	lanConn.Close()
 
-	connStatus <- ConnStatus{Status: CONN_DISCONNECTED, Err: err}
+	cs <- connStatus{Status: connDisconnected, Err: err}
 }
 
 func forwardConn(writer, reader net.Conn, done chan error) {
